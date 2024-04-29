@@ -44,8 +44,8 @@ class Trainer(object):
             self.logger.dumpkvs()
 
             if epoch % save_interval == 0:
-                self.save_predict_csv(epoch, mode="valid")
-                self.save_predict_csv(epoch, mode="train")
+                # self.save_predict_csv(epoch, mode="valid")
+                # self.save_predict_csv(epoch, mode="train")
                 self.save(epoch)
             
             self.world_model._torch_train(True)
@@ -118,8 +118,9 @@ class Trainer(object):
             
             self.plot(observations, obs_preds, "ven_p", epoch)
             
-            for i, k in enumerate(organ_columns):
-                self.plot(organs[..., i], organ_preds[..., i], k, epoch)
+            # for i, k in enumerate(organ_columns):
+                # if i < 1:
+                #     self.plot(organs[..., i], organ_preds[..., i], k, epoch)
             
         return results
     

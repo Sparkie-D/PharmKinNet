@@ -22,11 +22,13 @@ def get_parameters(modules: Iterable[nn.Module]):
     return model_parameters
 
 
-class RNNWorldModel():
+class MLPWorldModel():
     def __init__(self, args):
         args.embed_size = args.modelstate_size * 4
         
-        self.DynamicModel = RNNModel(args.embed_size, args.modelstate_size, **args.dynamic_model).to(args.device)
+        # self.DynamicModel = RNNModel(args.embed_size, args.modelstate_size, **args.dynamic_model).to(args.device)
+        self.DynamicModel = DenseModel(args.modelstate_size, args.embed_size, **args.dynamic_model).to(args.device)
+        
         
         self.ObsEncoder = DenseModel(args.modelstate_size, args.observation_dim, **args.obs_encoder).to(args.device)
         self.ObsDecoder = DenseModel(args.observation_dim, args.modelstate_size, **args.obs_decoder).to(args.device)
@@ -36,7 +38,8 @@ class RNNWorldModel():
         
         self.OrganEncoder = DenseModel(args.modelstate_size, args.organ_dim, **args.organ_encoder).to(args.device)
         self.OrganDecoder = DenseModel(args.organ_dim, args.modelstate_size, **args.organ_decoder).to(args.device)
-        self.OrganDynamicModel = RNNModel(args.embed_size, args.modelstate_size, **args.organ_dynamic_model).to(args.device)
+        # self.OrganDynamicModel = RNNModel(args.embed_size, args.modelstate_size, **args.organ_dynamic_model).to(args.device)
+        self.OrganDynamicModel = DenseModel(args.modelstate_size, args.embed_size, **args.dynamic_model).to(args.device)
         
         self.world_list = [self.DynamicModel, self.ObsEncoder, self.ObsDecoder, self.ActionEncoder, self.CompoundEncoder, self.PopulationEncoder, self.OrganEncoder, self.OrganDecoder, self.OrganDynamicModel]
         self.world_name = ['DynamicModel', 'ObsEncoder', 'ObsDecoder', 'ActionEncoder', 'CompoundEncoder', 'PopulationEncoder', 'OrganEncoder', 'OrganDecoder', 'OrganDynamicModel']
@@ -104,21 +107,20 @@ class RNNWorldModel():
         compound_embeds = self.CompoundEncoder(compounds)
         organ_embeds = self.OrganEncoder(organs)
 
-        rnn_hidden_state, rnn_organ_state = None, None
         z_preds, o_preds = [], []
         for i in range(1, observations.shape[1]):
             stacked_inputs = torch.cat([obs_embeds[:, i-1: i] if ((np.random.random() > prob) or (i==1)) else z_state, 
                                         action_embeds[:, i-1: i], 
                                         population_embeds[:, i-1: i], 
                                         compound_embeds[:, i-1: i]], -1)
-            z_state, rnn_hidden_state = self.DynamicModel(stacked_inputs, rnn_hidden_state)
+            z_state = self.DynamicModel(stacked_inputs)
             z_preds.append(z_state)
             
             organ_stacked_inputs = torch.cat([organ_embeds[:, i-1: i] if ((np.random.random() > prob) or (i==1)) else o_state, 
                                               z_state, 
                                               population_embeds[:, i-1: i], 
                                               compound_embeds[:, i-1: i]], -1)
-            o_state, rnn_organ_state = self.OrganDynamicModel(organ_stacked_inputs, rnn_organ_state)
+            o_state = self.OrganDynamicModel(organ_stacked_inputs)
             o_preds.append(o_state)
             
 
@@ -213,14 +215,13 @@ class RNNWorldModel():
         compound_embeds = self.CompoundEncoder(compounds)
         organ_embeds = self.OrganEncoder(organs)
 
-        rnn_hidden_state, rnn_organ_state = None, None
         z_preds, o_preds = [], []
         for i in range(1, observations.shape[1]):
             stacked_inputs = torch.cat([obs_embeds[:, i-1: i] if i == 1 else z_state, 
                                         action_embeds[:, i-1: i], 
                                         population_embeds[:, i-1: i], 
                                         compound_embeds[:, i-1: i]], -1)
-            z_state, rnn_hidden_state = self.DynamicModel(stacked_inputs, rnn_hidden_state)
+            z_state = self.DynamicModel(stacked_inputs)
             z_preds.append(z_state)
             
             if rollout_mode == "organ":
@@ -229,7 +230,7 @@ class RNNWorldModel():
                                               z_state, 
                                               population_embeds[:, i-1: i], 
                                               compound_embeds[:, i-1: i]], -1)
-            o_state, rnn_organ_state = self.OrganDynamicModel(organ_stacked_inputs, rnn_organ_state)
+            o_state = self.OrganDynamicModel(organ_stacked_inputs)
             o_preds.append(o_state)
 
         z_preds = torch.cat(z_preds, 1)

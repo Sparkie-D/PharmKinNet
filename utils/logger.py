@@ -259,11 +259,12 @@ class Logger(object):
         self._model_dir = os.path.join(self._dir, "model")
         self._result_dir = os.path.join(self._dir, "result")
         self._plot_dir = os.path.join(self._dir, "plot")
-        os.mkdir(self._record_dir)
-        os.mkdir(self._checkpoint_dir)
-        os.mkdir(self._model_dir)
-        os.mkdir(self._result_dir)
-        os.mkdir(self._plot_dir)
+        if not os.path.exists(self._record_dir):
+            os.mkdir(self._record_dir)
+            os.mkdir(self._checkpoint_dir)
+            os.mkdir(self._model_dir)
+            os.mkdir(self._result_dir)
+            os.mkdir(self._plot_dir)
     
     def _init_ouput_handlers(self, output_config: Dict) -> None:
         self._output_handlers = []
